@@ -1,0 +1,19 @@
+{
+  "name": "pinnace",
+  "version": "0.1.0",
+  "description": "A REST client with automatic caching support.",
+  "main": "index.js",
+  "author": "Ryan Zeigler <zeiglerr@gmail.com>",
+  "license": "BSD-3-Clause",
+  "dependencies": {
+    "bluebird": "^3.5.0",
+    "parsimmon": "^1.3.0",
+    "partial.lenses": "^11.7.1",
+    "ramda": "^0.23.0"
+  },
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "mocha": "^3.4.1",
+    "sinon": "^2.2.0"
+  }
+}
