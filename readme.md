@@ -1,2 +1,2 @@
-# rerestful
-#### _An HTTP client that remembers everything._
+# pinnace
+#### _An extensible HTTP client._

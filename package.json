@@ -1,18 +1,24 @@
 {
   "name": "pinnace",
   "version": "0.1.0",
-  "description": "A REST client with automatic caching support.",
+  "description": "A REST client",
   "main": "index.js",
   "author": "Ryan Zeigler <zeiglerr@gmail.com>",
   "license": "BSD-3-Clause",
+  "repository": "git@github.com:rzeigler/pinnace.git",
+  "scripts": {
+    "test": "mocha --reporter min *.spec.js"
+  },
   "dependencies": {
-    "bluebird": "^3.5.0",
-    "parsimmon": "^1.3.0",
-    "partial.lenses": "^11.7.1",
-    "ramda": "^0.23.0"
+    "fluture": "^6.3.0",
+    "partial.lenses": "^11.15.0",
+    "ramda": "^0.24.1",
+    "type-is": "^1.6.15",
+    "verror": "^1.10.0"
   },
   "devDependencies": {
     "chai": "^3.5.0",
+    "chai-as-promised": "^7.1.1",
     "mocha": "^3.4.1",
     "sinon": "^2.2.0"
   }
