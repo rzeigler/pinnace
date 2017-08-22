@@ -8,7 +8,10 @@ const {VError} = require("verror");
 const {Future} = require("fluture");
 const L = require("partial.lenses");
 const {compose, composeK, curry, fromPairs, identity, is, map, merge, objOf, pick, omit, pipe, reduce} = require("ramda");
-const {verbs, statusCodeErrorName, streamReadErrorName, configurationErrorName} = require("./constants");
+
+const statusCodeErrorName = "StatusCodeError";
+const streamReadErrorName = "StreamReadError";
+const configurationErrorName = "ConfigurationError";
 
 const defaultSocketTimeout = 60000;
 const optIdleTimeout = L.compose(L.prop("idleTimeout"), L.defaults(defaultSocketTimeout));
@@ -159,6 +162,8 @@ const request = composeK(compose(Future.encase(decodeResponse)), bufferResponse,
 
 const requestMethodFactory = curry((requestor, verb) => [verb.toLowerCase(), compose(requestor, L.set(optMethod, verb))]);
 
+const verbs = ["GET", "PUT", "POST", "DELETE", "PATCH", "HEAD"];
+
 const methods = pipe(
     map(requestMethodFactory(request)),
     fromPairs
@@ -193,5 +198,6 @@ module.exports = merge(methods, {
     resStream,
     resBuffer,
     resText,
-    resBody
+    resBody,
+    verbs
 });
