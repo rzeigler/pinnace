@@ -8,10 +8,7 @@ const {VError} = require("verror");
 const {Future} = require("fluture");
 const L = require("partial.lenses");
 const {compose, composeK, curry, fromPairs, identity, is, map, merge, objOf, pick, omit, pipe, reduce} = require("ramda");
-
-const statusCodeError = "StatusCodeError";
-const streamReadError = "StreamReadError";
-const configurationErrorName = "ConfigurationError";
+const {verbs, statusCodeErrorName, streamReadErrorName, configurationErrorName} = require("./constants");
 
 const defaultSocketTimeout = 60000;
 const optIdleTimeout = L.compose(L.prop("idleTimeout"), L.defaults(defaultSocketTimeout));
@@ -23,8 +20,13 @@ const optHeader = (header) => L.compose(optHeaders, L.defaults({}), L.prop(heade
 const optAgent = L.prop("agent");
 
 const resHeader = (header) => L.compose(L.prop("headers"), L.defaults({}), L.prop(header));
+const resStatusCode = L.prop("statusCode");
+const resStatusMessage = L.prop("statusMessage");
+const resOptions = L.prop("options");
 const resContentType = L.compose(L.prop("headers"), L.defaults({}), L.prop("content-type"), L.defaults("application/octet-stream"));
+const resStream = L.prop("stream");
 const resBuffer = L.prop("buffer");
+const resText = L.prop("text");
 const resBody = L.prop("body");
 
 const httpForProto = (protocol) => {
@@ -71,11 +73,14 @@ const bufferStream = (stream) => new Future((reject, resolve) => {
     });
     stream.on("error", (err) => {
         reject(new VError({
-            name: streamReadError,
+            name: streamReadErrorName,
             cause: err
         }, "Unable to read from stream"));
     });
 });
+
+
+const pickResponseFields = pick(["statusCode", "statusMessage", "url", "upgrade", "headers", "httpVersion", "httpVersionMajor", "httpVersionMinor"]);
 
 const stream = curry((options) => {
     const ver = httpForProto(options.protocol);
@@ -85,37 +90,30 @@ const stream = curry((options) => {
         req.on("response", (res) => {
             const statusCode = res.statusCode;
             if (statusCode >= 200 && statusCode < 400) {
-                resolve({
-                    statusCode: res.statusCode,
-                    headers: res.headers,
-                    bodyStream: res,
+                resolve(merge(pickResponseFields(res), {
+                    stream: res,
                     options
-                });
+                }));
             } else {
                 bufferStream(res).fork(
                     (err) => 
                         reject(VError.fromList([
                             new VError({
-                                name: statusCodeError,
-                                info: {
-                                    options,
-                                    statusCode,
-                                    headers: res.headers
-                                }
+                                name: statusCodeErrorName,
+                                info: merge(pickResponseFields(res), {
+                                    options
+                                })
                             }, `Server responded with ${statusCode}`),
                             err
                         ])),
-                    (body) => 
+                    (buffer) => 
                         reject(new VError({
-                            name: statusCodeError,
-                            info: {
+                            name: statusCodeErrorName,
+                            info: merge(pickResponseFields(res), {
                                 options,
-                                statusCode,
-                                headers: res.headers,
-                                // If the content type is meaninfully decodeable, do so for ease of debugging
-                                body: typeis.is(res.headers["content-type"], ["text/*", "application/json", "application/*+json"]) ? 
-                                        body.toString("utf8") : body
-                            }
+                                text: typeis.is(res.headers["content-type"], ["text/*", "application/json", "application/*+json"]) ? 
+                                        buffer.toString("utf8") : buffer
+                            })
                         }, `Server responded with ${statusCode}`)));
             }
         });
@@ -131,7 +129,7 @@ const stream = curry((options) => {
     });
 });
 
-const bufferResponse = (res) => map(compose(omit(["bodyStream"]), merge(res), objOf("buffer")), bufferStream(res.bodyStream));
+const bufferResponse = (res) => map(compose(omit(["stream"]), merge(res), objOf("buffer")), bufferStream(res.stream));
 
 const textFormats = [
     "text/*",
@@ -140,8 +138,9 @@ const textFormats = [
 ];
 const isTextFormat = (type) => typeis.is(type, textFormats);
 
+// Needs to extract the 
 const decodeResponse = (res) => isTextFormat(L.get(resContentType, res)) ?
-    L.set(resBody, L.get(resBuffer, res).toString("utf8"), res) : res;
+    L.set(resText, L.get(resBuffer, res).toString("utf8"), res) : res;
 
 const method = curry((verb, opts) => L.set(optMethod, verb, opts));
 const uriToOptions = compose(pick(["protocol", "auth", "host", "hash", "path"]), url.parse);
@@ -160,8 +159,6 @@ const request = composeK(compose(Future.encase(decodeResponse)), bufferResponse,
 
 const requestMethodFactory = curry((requestor, verb) => [verb.toLowerCase(), compose(requestor, L.set(optMethod, verb))]);
 
-const verbs = ["GET", "PUT", "POST", "DELETE", "PATCH", "HEAD"];
-
 const methods = pipe(
     map(requestMethodFactory(request)),
     fromPairs
@@ -176,6 +173,7 @@ module.exports = merge(methods, {
     httpForProto,
     stream,
     streaming: streamMethods,
+    requestMethodFactory,
     request,
     method,
     uri,
@@ -187,8 +185,13 @@ module.exports = merge(methods, {
     agent,
     connTimeout,
     idleTimeout,
+    resStatusCode,
+    resStatusMessage,
+    resOptions,
     resHeader,
     resContentType,
+    resStream,
     resBuffer,
+    resText,
     resBody
 });
