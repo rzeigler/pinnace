@@ -27,18 +27,18 @@ const resContentType = L.compose(L.prop("headers"), L.defaults({}), L.prop("cont
 const resBuffer = L.prop("buffer");
 const resBody = L.prop("body");
 
-const httpForProto = (proto) => {
-    if (proto === "http:") {
+const httpForProto = (protocol) => {
+    if (protocol === "http:") {
         return http;
-    } else if (proto === "https:") {
+    } else if (protocol === "https:") {
         return https;
-    } else if (!proto) {
+    } else if (!protocol) {
         return http;
     }
     throw new VError({
         name: configurationErrorName,
-        info: {proto}
-    }, "Unrecognized protocol %s", proto);
+        info: {protocol}
+    }, "Unrecognized protocol %s", protocol);
 };
 
 const send = (req, body) => {
@@ -78,9 +78,9 @@ const bufferStream = (stream) => new Future((reject, resolve) => {
 });
 
 const stream = curry((options) => {
-    const http = httpForProto(options.proto);
+    const ver = httpForProto(options.protocol);
     return new Future((reject, resolve) => {
-        const req = http.request(options);
+        const req = ver.request(options);
         const abort = () => { req.abort(); };
         req.on("response", (res) => {
             const statusCode = res.statusCode;
@@ -155,7 +155,8 @@ const idleTimeout = curry((timeout, opts) => L.set(optIdleTimeout, timeout, opts
 const conf = (...dsl) => reduce(pipe, identity, dsl)({});
 const confs = (dsl) => reduce(pipe, identity, dsl)({});
 
-const request = composeK(compose(Future.of, decodeResponse), bufferResponse, stream);
+// The decodeResponse probably needs some kind of error reporting on failure beyond whatever gets thrown
+const request = composeK(compose(Future.encase(decodeResponse)), bufferResponse, stream);
 
 const requestMethodFactory = curry((requestor, verb) => [verb.toLowerCase(), compose(requestor, L.set(optMethod, verb))]);
 
@@ -172,6 +173,7 @@ const streamMethods = pipe(
 )(verbs);
 
 module.exports = merge(methods, {
+    httpForProto,
     stream,
     streaming: streamMethods,
     request,
