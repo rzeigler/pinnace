@@ -10,3 +10,8 @@ streaming.get(conf(uri("http://www.google.com/")))
     .fork(console.error, res => {
         res.bodyStream.pipe(fs.createWriteStream("./output.txt"));
     });
+    
+streaming.get(conf(uri("http://www.google.com/")))
+    .fork(console.error, res => {
+        res.bodyStream.pipe(fs.createWriteStream("./output2.txt"));
+    })(); // with cancellation 😁
